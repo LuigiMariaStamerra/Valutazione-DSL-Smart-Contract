@@ -1,3 +1,0 @@
-CML.zip filter=lfs diff=lfs merge=lfs -text
-DeCon.zip filter=lfs diff=lfs merge=lfs -text
-Quartz.zip filter=lfs diff=lfs merge=lfs -text
