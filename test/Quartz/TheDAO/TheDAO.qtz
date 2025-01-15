@@ -1,0 +1,26 @@
+contract TheDAO {
+
+    data {
+
+        Balances: Mapping[Identity, Uint]
+
+    }
+
+    initialize: -> open
+
+    deposit: open ->(tokens: Uint) open 
+    requires [ tokens >= 1 ] {
+
+        Balances[sender] = Balances[sender] + tokens
+
+    }
+
+    withdraw: open -> open 
+    requires [ Balances[sender] >= 1 ] {
+
+        send Balances[sender] to sender
+        Balances[sender] = 0
+
+    }
+
+}

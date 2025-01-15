@@ -1,0 +1,71 @@
+namespace cml.examples
+
+import cml.generator.annotation.solidity.*
+
+asset Balance identified by user
+	Party user
+	Integer balance
+
+asset Allowed identified by spender
+	Party spender
+	Integer amount
+	
+asset Allowance identified by user
+	Party user
+	Allowed[] allowed
+
+contract Token
+
+	String name
+	String symbol
+	Party owner
+	Integer decimals
+	Integer totalSupply
+	Balance[] balanceOf
+	Allowance[] allowance
+	Party nullAddress
+	
+	clause Mint
+		party owner
+		may mint
+		
+	clause Transfer
+		party anyone
+		may transfer
+	
+	clause approve
+		party anyone
+		may approve
+		
+	clause transferFrom
+		party anyone
+		may transferFrom
+	
+	action init(String _name, String _symbol)
+		name = _name
+		symbol = _symbol
+		decimals = 18
+		owner = caller
+	
+	action mint(Party to, Integer amount)
+		ensure(to.id != nullAddress.id, "Destination address not valid.")
+		ensure(amount > 0, "Amount must be greater than 0.")
+		totalSupply += amount
+		balanceOf[to].balance += amount
+		
+	action transfer(Party to, Integer amount)
+		ensure(to.id != nullAddress.id, "Destination address not valid.")
+		ensure(balanceOf[caller].balance >= amount, "Insufficient balance.")
+		balanceOf[caller].balance -= amount
+		balanceOf[to].balance += amount
+		
+	action approve(Party spender, Integer amount)
+		allowance[caller].allowed[spender].amount = amount
+		
+	action transferFrom(Party source, Party destination, Integer amount)
+		ensure(destination.id != nullAddress.id, "Destination address not valid.")
+		ensure(balanceOf[source].balance >= amount, "Source balance not sufficient.")
+		ensure(allowance[source].allowed[caller].amount >= amount, "Insufficient allowance.")
+		allowance[source].allowed[caller].amount -= amount
+		balanceOf[source].balance -= amount
+		balanceOf[destination].balance += amount

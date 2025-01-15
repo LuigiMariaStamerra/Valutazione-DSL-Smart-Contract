@@ -1,0 +1,10 @@
+.decl deposit(_from: address, _amount: uint)
+
+.decl recv_deposit()
+.decl recv_send(_to: address, _amount: uint)
+
+.public recv_deposit
+.public recv_send
+
+deposit(_from, _amount) :- recv_deposit(), msgSender(_from), msgValue(_amount).
+send(_to, _amount) :- recv_send(_to, _amount), thisBalance(_balance), _amount <= _balance.

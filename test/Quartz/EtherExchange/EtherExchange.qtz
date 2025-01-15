@@ -1,0 +1,22 @@
+contract EtherExchange {
+
+    data {}
+
+    initialize: -> open
+
+    deposit: open ->(tokens: Uint) open
+
+    send: open ->(to: Identity, amount: Uint) open 
+    requires [ amount <= balance ] {
+
+        sendAndConsume amount to to
+
+    }
+
+}
+
+properties {
+
+    [](balance >= 0)
+
+}

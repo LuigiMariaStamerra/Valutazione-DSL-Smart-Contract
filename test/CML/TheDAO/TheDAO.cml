@@ -1,0 +1,29 @@
+namespace cml.examples
+
+import cml.generator.annotation.solidity.*
+
+asset Balance identified by user
+	Party user
+	Integer balance
+
+@PullPayment
+contract TheDAO
+	
+	Balance[] balances
+	
+	clause Deposit
+		party anyone
+		may deposit
+		
+	clause Withdraw
+		party anyone
+		may withdraw
+	
+	action deposit(TokenTransaction t)
+		caller.deposit(t.amount)
+		balances[caller].balance += t.amount
+	
+	action withdraw()
+		ensure(balances[caller].balance > 0, "Insufficient balance.")
+		transfer(caller, balances[caller].balance)
+		balances[caller].balance = 0

@@ -1,0 +1,65 @@
+contract Token {
+
+    data {
+
+        Name: String
+        Symbol: String
+        BalanceOf: Mapping[Identity, Uint]
+        Owner: Identity
+        Decimals: Uint
+        TotalSupply: Uint
+        Allowance: Mapping[Identity, Mapping[Identity, Uint]]
+        NullAddress: Identity
+
+    }
+
+    initialize: ->(name: String, symbol: String) open {
+
+        Name = name
+        Symbol = symbol
+        Decimals = 18
+        Owner = sender
+
+    }
+
+    mint: open ->(to: Identity, amount: Uint) open 
+    authorized [ Owner ] 
+    requires [ to != NullAddress && amount > 0] {
+
+        TotalSupply = TotalSupply + amount
+        BalanceOf[to] = BalanceOf[to] + amount
+
+    }
+
+    transfer: open ->(to: Identity, amount: Uint) open 
+    requires [ BalanceOf[sender] >= amount && to != NullAddress ] {
+
+        BalanceOf[sender] = BalanceOf[sender] - amount
+        BalanceOf[to] = BalanceOf[to] + amount
+
+    }
+
+    approve: open ->(spender: Identity, amount: Uint) open {
+
+        Allowance[sender][spender] = amount
+
+    }
+
+    transferFrom: open ->(from: Identity, to: Identity, amount: Uint) open 
+    requires [ Allowance[from][sender] >= amount && BalanceOf[from] >= amount && to != NullAddress ] {
+
+        Allowance[from][sender] = Allowance[from][sender] - amount
+        BalanceOf[from] = BalanceOf[from] - amount
+        BalanceOf[to] = BalanceOf[to] + amount
+
+    }
+
+}
+
+properties {
+
+    [](TotalSupply == sum(BalanceOf))
+    [](BalanceOf[NullAddress] == 0)
+    [](TotalSupply >= 0)
+
+}

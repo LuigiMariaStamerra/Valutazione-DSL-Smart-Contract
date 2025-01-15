@@ -1,0 +1,87 @@
+.decl *owner(_owner: address)
+.decl *name(_name: string)
+.decl *symbol(_symbol: string)
+.decl *decimals(_decimals: uint)
+.decl *totalSupply(_totalSupply: uint)
+.decl constructor(_name: string, _symbol: string)
+
+owner(_sender) :- constructor(_, _), msgSender(_sender).
+name(_name) :- constructor(_name, _).
+symbol(_symbol) :- constructor(_, _symbol).
+decimals(18) :- constructor(_, _).
+totalSupply(0) :- constructor(_, _).
+
+.decl balanceOf(_account: address, _balance: uint)[0]
+.decl allowance(_account: address, _spender: address, _amount: uint)[0, 1]
+.decl increaseAllowance(_account: address, _spender: address, _increase: uint)
+.decl allowanceTotal(_account: address, _spender: address, _allowanceTotal: uint)[0, 1]
+.decl spentTotal(_account: address, _spender: address, _spentTotal: uint)[0, 1]
+.decl recv_approve(_spender: address, _amount: uint)
+
+.public totalSupply(0)
+.public balanceOf(1)
+.public allowance(2)
+.public recv_approve
+
+.decl mint(_to: address, _amount: uint)
+.decl transfer(_from: address, _to: address, _amount: uint)
+
+.decl recv_mint(_to: address, _amount: uint)
+.decl recv_transfer(_to: address, _amount: uint)
+
+.public recv_mint
+.public recv_transfer
+
+mint(_to, _amount) :- recv_mint(_to, _amount), msgSender(_owner), owner(_owner),
+            _to != 0, _amount > 0.
+
+transfer(_from, _to, _amount) :- recv_transfer(_to, _amount), msgSender(_from), 
+            balanceOf(_from, _balance), _amount <= _balance.
+
+totalSupply(_totalSupply) :- _totalSupply = sum _amount: mint(_, _amount).
+
+.decl totalMint(_account: address, _amount: uint)[0]
+.decl totalOut(_account: address, _amount: uint)[0]
+.decl totalIn(_account: address, _amount: uint)[0]
+
+totalMint(_account, _totAmount) :- mint(_account, _), _totAmount = sum _amount: mint(_account, _amount).
+totalOut(_account, _totAmount) :- transfer(_account, _, _), _totAmount = sum _amount: transfer(_account, _, _amount).
+totalIn(_account, _totAmount) :- transfer(_, _account, _), _totAmount = sum _amount: transfer(_, _account, _amount).
+
+balanceOf(_account, _balance) :- totalMint(_account, _mintAmount), totalOut(_account, _outAmount), 
+            totalIn(_account, _inAmount), _balance := _mintAmount - _outAmount + _inAmount.
+
+.decl transferFrom(_from: address, _to: address, _spender: address, _amount: uint)
+
+.decl recv_transferFrom(_from: address, _to: address, _amount: uint)
+
+.public recv_transferFrom
+
+transferFrom(_from, _to, _spender, _amount) :- recv_transferFrom(_from, _to, _amount), msgSender(_spender), 
+            balanceOf(_from, _balance), _amount <= _balance, allowance(_from, _spender, _allowance), 
+            _amount <= _allowance.
+transfer(_from, _to, _amount) :- transferFrom(_from, _to, _, _amount).
+
+increaseAllowance(_account, _spender, _increase) :- recv_approve(_spender, _amount), 
+            msgSender(_account), allowance(_account, _spender, _allowance), 
+            _increase := _amount - _allowance.
+
+allowanceTotal(_account, _spender, _allowanceTotal) :- increaseAllowance(_account, _spender, _),
+            _allowanceTotal = sum _increase: increaseAllowance(_account, _spender, _increase).
+
+spentTotal(_account, _spender, _spentTotal) :- transferFrom(_account, _, _spender, _), 
+            _spentTotal = sum _amount: transferFrom(_account, _, _spender, _amount).
+
+allowance(_account, _spender, _amount) :- allowanceTotal(_account, _spender, _allowanceTotal), 
+            spentTotal(_account, _spender, _spentTotal), _amount := _allowanceTotal - _spentTotal.
+
+.decl *totalBalances(_total: uint)
+.decl *unequalBalance(_totalBalances: uint, _totalSupply: uint)
+
+.violation unequalBalance
+
+totalBalances(0) :- constructor(_, _).
+totalBalances(_total) :- _total = sum _balance: balanceOf(_, _balance).
+
+unequalBalance(_totalBalances, _totalSupply) :- totalBalances(_totalBalances), totalSupply(_totalSupply), 
+            _totalBalances != _totalSupply.

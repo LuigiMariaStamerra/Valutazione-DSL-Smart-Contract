@@ -1,0 +1,88 @@
+contract Auction {
+
+    data {
+
+        Auctioneer: Identity
+        Beneficiary: Identity
+        HighestBidder: Identity
+        HighestBid: Uint
+        EndTime: Timestamp
+        Balances: Mapping[Identity, Uint]
+
+    }
+
+    initialize: ->(beneficiary: Identity, duration: Timespan) open {
+
+        Beneficiary = beneficiary
+        HighestBid = 0
+        EndTime = now + duration
+        Auctioneer = sender
+
+    }
+
+    bid: open ->(tokens: Uint) open 
+    requires [ tokens > HighestBid ] {
+
+        HighestBid = tokens
+        HighestBidder = sender
+        Balances[HighestBidder] = Balances[HighestBidder] + HighestBid
+    
+    }
+
+    withdrawOpen: open -> open 
+    requires [ Balances[sender] > 0 ] {
+
+        if (sender != HighestBidder) {
+            sendAndConsume Balances[sender] to sender
+        }
+
+        if (sender == HighestBidder && Balances[sender] - HighestBid > 0) {
+            send Balances[sender] - HighestBid to sender consuming Balances[sender]
+        }
+    
+    }
+
+    withdrawClosed: closed -> closed 
+    requires [ Balances[sender] > 0 ] {
+
+        sendAndConsume Balances[sender] to sender
+
+    }
+
+    withdrawAborted: aborted -> aborted
+    requires [ Balances[sender] > 0 ] {
+
+        sendAndConsume Balances[sender] to sender
+
+    }
+
+    accept: open -> closed
+    authorized [ Beneficiary ] 
+    requires [ now > EndTime ] {
+
+        sendAndConsume HighestBid to sender
+
+    }
+
+    reject: open -> closed 
+    authorized [ Beneficiary ] 
+    requires [ now > EndTime ] {
+
+        sendAndConsume HighestBid to HighestBidder
+
+    }
+
+    abort: open -> aborted 
+    authorized [ Auctioneer ]
+
+}
+
+properties {
+
+    [](balance >= 0)
+    [](<>(closed))
+    [](max(bid.tokens) >= 0)
+    [](open => HighestBid >= max(bid.tokens))
+    [](sum(Balances) >= 0)
+    
+}

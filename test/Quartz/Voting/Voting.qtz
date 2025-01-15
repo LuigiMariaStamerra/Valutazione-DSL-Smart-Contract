@@ -1,0 +1,46 @@
+contract Voting {
+    
+    data {
+
+        Organizer: Identity
+        Options: Uint
+        EndTime: Timestamp
+        Voted: Sequence[Identity]
+        Votes: Mapping[Uint, Uint]
+        Winner: Uint
+
+    }
+
+    initialize: ->(options: Uint, duration: Timespan) open {
+
+        Organizer = sender
+        Options = options
+        EndTime = now + duration
+
+    }
+
+    vote: open ->(option: Uint) open 
+    requires [ sender not in Voted && option > 0 &&  option <= Options ] {
+        
+        Votes[option] = Votes[option] + 1
+        add sender to Voted
+        
+        if ((Winner != 0 && Votes[option] > Votes[Winner]) || Winner == 0) {
+
+            Winner = option
+
+        }
+
+    }
+
+    close: open -> closed
+    authorized [ Organizer ] 
+    requires [ now > EndTime ]
+
+}
+
+properties {
+
+    [](Winner >= 0 && Winner <= Options)
+
+}

@@ -1,0 +1,39 @@
+.decl *organizer(_organizer: address)
+.decl *endTime(_endTime: uint)
+.decl *options(_options: uint)
+.decl constructor(_votingTime: uint, _options: uint)
+
+organizer(_sender) :- constructor(_, _), msgSender(_sender).
+endTime(_endTime) :- constructor(_votingTime, _), now(_nowTime), _endTime := _nowTime + _votingTime.
+options(_options) :- constructor(_, _options).
+
+.decl vote(_voter: address, _option: uint)[0]
+.decl recv_vote(_option: uint)
+.decl voted(_voter: address, _voted: bool)[0]
+.decl votes(_option: uint, _count: uint)[0]
+.decl *winningOption(_winnerOption: uint)
+.decl *winningOptionCount(_winnerCount: uint)
+.decl *ended(_ended: bool)
+.decl recv_close()
+
+.public recv_vote
+.public recv_close
+.public winningOption(0)
+
+winningOption(0) :- constructor(_, _).
+winningOptionCount(0) :- constructor(_, _).
+
+ended(true) :- recv_close(), msgSender(_sender), organizer(_sender), now(_nowTime), endTime(_endTime), _nowTime >= _endTime.
+
+vote(_voter, _option) :- recv_vote(_option), msgSender(_voter), voted(_voter, false), ended(false),
+            options(_options), _option > 0, _option <= _options.
+
+voted(_voter, true) :- vote(_voter, _).
+
+votes(_option, _count) :- _count = count: vote(_, _option).
+
+//winningOption(_option) :- _maxVotes = max _count: votes(_, _count), votes(_option, _maxVotes), ended(true).
+winningOption(_option) :- vote(_, _option), winningOption(_winner), _winner == 0.
+winningOption(_option) :- vote(_, _option), winningOption(_winner), _winner != 0, votes(_option, _optionCount), winningOptionCount(_winnerCount), _optionCount > _winnerCount.
+
+winningOptionCount(_winnerCount) :- winningOption(_winnerOption), votes(_winnerOption, _winnerCount).

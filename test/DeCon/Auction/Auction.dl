@@ -1,0 +1,60 @@
+.decl *owner(_owner: address)
+.decl *beneficiary(_beneficiary: address)
+.decl *endTime(_endTime: uint)
+.decl constructor(_beneficiary: address, _biddingTime: uint)
+
+owner(_sender) :- constructor(_, _), msgSender(_sender).
+endTime(_endTime) :- constructor(_, _biddingTime), now(_nowTime), _endTime := _nowTime + _biddingTime.
+beneficiary(_beneficiary) :- constructor(_beneficiary, _).
+
+.decl bid(_bidder: address, _amount: uint)
+.decl recv_bid()
+.decl withdraw(_bidder: address, _amount: uint)
+.decl recv_withdraw()
+.decl withdrawWinner(_recipient: address, _amount: uint)
+.decl recv_accept()
+.decl recv_reject()
+.decl *ended(_ended: bool)
+.decl *aborted(_aborted: bool)
+.decl recv_abort()
+
+.public recv_bid
+.public recv_withdraw
+.public recv_accept
+.public recv_reject
+.public recv_abort
+
+.decl withdrawTotal(_bidder: address, _amount: uint)[0]
+.decl bidTotal(_bidder: address, _amount: uint)[0]
+.decl balance(_bidder: address, _amount:uint)[0]
+
+withdrawTotal(_bidder, _amountTotal) :- withdraw(_bidder, _), _amountTotal = sum _amount: withdraw(_bidder, _amount).
+bidTotal(_bidder, _amountTotal) :- bid(_bidder, _), _amountTotal = sum _amount: bid(_bidder, _amount).
+balance(_bidder, _amount) :- bidTotal(_bidder, _bidTotal), withdrawTotal(_bidder, _withdrawTotal), _amount := _bidTotal - _withdrawTotal.
+
+.decl *highestBid(_bidder: address, _bid: uint)
+highestBid(_bidder, _bid) :- bid(_bidder, _bid), _bid = max _amount: bid(_, _amount).
+
+bid(_bidder, _amount) :- recv_bid(), msgSender(_bidder), msgValue(_amount), highestBid(_,_bid), _amount > _bid,
+            ended(false), aborted(false).
+
+withdraw(_bidder, _amount) :- recv_withdraw(), msgSender(_bidder), highestBid(_bidder, _bid),
+            balance(_bidder, _balance), _balance > _bid, _amount := _balance - _bid.
+withdraw(_bidder, _amount) :- recv_withdraw(), msgSender(_bidder), highestBid(_highestBidder, _),
+            _bidder != _highestBidder, balance(_bidder, _amount), _amount > 0.
+withdraw(_bidder, _amount) :- recv_withdraw(), msgSender(_bidder), 
+            balance(_bidder, _amount), aborted(true).
+send(_bidder, _amount) :- withdraw(_bidder, _amount).
+
+.decl withdrawWinnerCount(_count: uint)
+withdrawWinnerCount(_count) :- _count = count: withdrawWinner(_, _).
+
+withdrawWinner(_sender, _amount) :- recv_accept(), msgSender(_sender), beneficiary(_sender), now(_nowTime),
+            endTime(_endTime), _nowTime >= _endTime, aborted(false), ended(false), highestBid(_, _amount).
+withdrawWinner(_recipient, _amount) :- recv_reject(), aborted(false), msgSender(_sender), beneficiary(_sender), now(_nowTime),
+            endTime(_endTime), _nowTime >= _endTime, ended(false), highestBid(_recipient, _amount).
+
+send(_recipient, _amount) :- withdrawWinner(_recipient, _amount).
+
+aborted(true) :- recv_abort(), msgSender(_sender), owner(_sender), aborted(false), ended(false).
+ended(true) :- withdrawWinnerCount(_count), _count >= 1.

@@ -1,0 +1,83 @@
+namespace cml.examples
+
+import cml.generator.annotation.solidity.*
+
+asset Balance identified by bidder
+	Party bidder
+	Integer	bid
+
+@PullPayment
+contract Auction
+
+	Integer highestBid
+	Party highestBidder
+	Party beneficiary
+	Party auctioneer
+	Duration biddingTime
+	Boolean aborted
+	Boolean ended
+	Balance[] balances
+	
+	clause Bid
+		given !aborted and !ended
+		party anyone
+		may bid
+	
+	clause Withdraw
+		party anyone
+		may withdraw
+	
+	clause Accept
+		due after contractStart.addDuration(biddingTime)
+		given !aborted and !ended
+		party beneficiary
+		may accept
+	
+	clause Reject
+		due after contractStart.addDuration(biddingTime)
+		given !aborted and !ended
+		party beneficiary
+		may reject
+	
+	clause Abort
+		given !aborted and !ended
+		party auctioneer
+		may abort
+	
+	action init(Party _beneficiary, Duration _biddingTime)
+		auctioneer = caller
+		biddingTime = _biddingTime
+		beneficiary = _beneficiary
+	
+	action bid(TokenTransaction t)
+		ensure(t.amount > highestBid, "There is already a higher bid.")
+		caller.deposit(t.amount)
+		highestBidder = caller
+		highestBid = t.amount
+		balances[caller].bid += t.amount
+	
+	action withdraw()
+		ensure(balances[caller].bid > 0, "Bidder balance is 0")
+		if (!aborted and !ended)
+			if (caller != highestBidder)
+				transfer(caller, balances[caller].bid)
+				balances[caller].bid = 0
+			if (caller == highestBidder and balances[caller].bid - highestBid > 0)
+				transfer(caller, balances[caller].bid - highestBid)
+				balances[caller].bid -= highestBid
+		else
+			transfer(caller, balances[caller].bid)
+			balances[caller].bid = 0
+	
+	action accept()
+		ended = true
+		transfer(beneficiary, highestBid)
+		highestBid = 0
+	
+	action reject()
+		ended = true
+		transfer(highestBidder, highestBid)
+		highestBid = 0
+	
+	action abort()
+		aborted = true

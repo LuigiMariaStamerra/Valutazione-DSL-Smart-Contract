@@ -1,0 +1,46 @@
+namespace cml.examples
+
+import cml.generator.annotation.solidity.*
+
+asset Voted identified by voter
+	Party voter
+	Boolean voted
+	
+asset Votes identified by option
+	Integer option
+	Integer count
+
+contract Voting
+
+	Party organizer
+	Integer options
+	Duration votingTime
+	Voted[] voted
+	Votes[] votes
+	Boolean ended
+	Integer winner
+	
+	clause Vote
+		given !ended and voted[caller].voted == false
+		party anyone
+		may vote
+	
+	clause Close
+		due after contractStart.addDuration(votingTime)
+		given !ended
+		party organizer
+		may close
+	
+	action init(Party _organizer, Duration _votingTime)
+		votingTime = _votingTime
+		organizer = _organizer
+	
+	action vote(Integer option)
+		ensure(option > 0 and option <= options, "Option not valid.")
+		votes[option].count += 1
+		voted[caller].voted = true
+		if (votes[option].count > votes[winner].count)
+			winner = option
+	
+	action close()
+		ended = true

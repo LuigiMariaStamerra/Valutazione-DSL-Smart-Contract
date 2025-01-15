@@ -1,0 +1,21 @@
+namespace cml.examples
+
+import cml.generator.annotation.solidity.*
+
+@PullPayment
+contract EtherExchange
+	
+	clause Deposit
+		party anyone
+		may deposit
+		
+	clause Send
+		party anyone
+		may send
+	
+	action deposit(TokenTransaction t)
+		caller.deposit(t.amount)
+	
+	action send(Party to, Integer amount)
+		ensure(amount <= token.quantity, "Insufficient contract balance.")
+		transfer(to, amount)

@@ -1,0 +1,24 @@
+.decl totalDeposit(_account: address, _amount: uint)[0]
+.decl totalWithdraw(_account: address, _amount: uint)[0]
+.decl balances(_account: address, _balance: uint)[0]
+
+.public balances(1)
+
+.decl deposit(_from: address, _amount: uint)
+.decl withdraw(_to: address, _amount: uint)
+
+.decl recv_deposit()
+.decl recv_withdraw()
+
+.public recv_deposit
+.public recv_withdraw
+
+deposit(_from, _amount) :- recv_deposit(), msgSender(_from), msgValue(_amount).
+
+withdraw(_to, _amount) :- recv_withdraw(), msgSender(_to), balances(_to, _amount).
+send(_to, _amount) :- withdraw(_to, _amount).
+
+totalDeposit(_account, _amount) :- deposit(_account, _), _amount = sum _deposit: deposit(_account, _deposit).
+totalWithdraw(_account, _amount) :- withdraw(_account, _), _amount = sum _withdraw: withdraw(_account, _withdraw).
+balances(_account, _balance) :- msgSender(_account), totalDeposit(_account, _totalDeposit), 
+            totalWithdraw(_account, _totalWithdraw), _balance := _totalDeposit - _totalWithdraw.
